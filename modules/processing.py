@@ -9,13 +9,12 @@ import json
 import concurrent.futures # Not fully implemented for parallel, consider simplifying if not used
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format=\'%(asctime)s - %(name)s - %(levelname)s - %(message)s\')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Import necessary functions from other modules
-from modules.metadata_extraction import get_extraction_functions
-from modules.direct_metadata_application_v3_fixed import (
+from .metadata_extraction import get_extraction_functions
+from .direct_metadata_application_v3_fixed import (
     apply_metadata_to_file_direct_worker,
     parse_template_id,
     get_template_schema # Used to get fields for extraction
@@ -32,21 +31,21 @@ def get_template_id_for_file(file_id: str, file_doc_type: Optional[str], session
         if file_doc_type and "document_type_to_template" in metadata_config:
             mapped_template_id = metadata_config["document_type_to_template"].get(file_doc_type)
             if mapped_template_id:
-                logger.info(f"File ID {file_id} (type {file_doc_type}): Using mapped template 	{mapped_template_id}")
+                logger.info(f"File ID {file_id} (type {file_doc_type}): Using mapped template {mapped_template_id}")
                 return mapped_template_id
         
         # Fallback to global template_id from config for structured
         global_structured_template_id = metadata_config.get("template_id")
         if global_structured_template_id:
-            logger.info(f"File ID {file_id}: No specific mapping for type 	{file_doc_type}". Using global structured template 	{global_structured_template_id}")
+            logger.info(f"File ID {file_id}: No specific mapping for type {file_doc_type}. Using global structured template {global_structured_template_id}")
             return global_structured_template_id
         
-        logger.warning(f"File ID {file_id}: No template ID found for structured extraction/application (no mapping for type 	{file_doc_type}" and no global template).")
+        logger.warning(f"File ID {file_id}: No template ID found for structured extraction/application (no mapping for type {file_doc_type} and no global template).")
         return None 
         
     elif extraction_method == "freeform":
         # As per previous enhancement, freeform defaults to global_properties
-        logger.info(f"File ID {file_id}: Using \'global_properties\' for freeform.")
+        logger.info(f"File ID {file_id}: Using 'global_properties' for freeform.")
         return "global_properties"
         
     return None
@@ -98,7 +97,7 @@ def process_files_with_progress(files_to_process: List[Dict[str, Any]], extracti
         extract_func = extraction_functions.get(extraction_method)
 
         if not extract_func:
-            err_msg = f"No extraction function found for method 	{extraction_method}". Skipping file {file_name}."
+            err_msg = f"No extraction function found for method {extraction_method}. Skipping file {file_name}."
             logger.error(err_msg)
             st.session_state.processing_state["errors"][file_id] = err_msg
             processed_count += 1
@@ -115,15 +114,15 @@ def process_files_with_progress(files_to_process: List[Dict[str, Any]], extracti
                         # Get fields of this specific template to guide the AI
                         fields_for_ai = get_fields_for_ai_from_template(client, ext_scope, ext_template_key)
                         if fields_for_ai:
-                            logger.info(f"File {file_name}: Extracting structured data using template 	{target_template_id}" with fields: 	{fields_for_ai}")
+                            logger.info(f"File {file_name}: Extracting structured data using template {target_template_id} with fields: {fields_for_ai}")
                             # extract_structured_metadata expects client, file_id, fields, metadata_template (optional), ai_model
                             extracted_metadata = extract_func(client=client, file_id=file_id, fields=fields_for_ai, ai_model=ai_model)
                         else:
-                            err_msg = f"Could not get fields for template 	{target_template_id}". Skipping extraction for {file_name}."
+                            err_msg = f"Could not get fields for template {target_template_id}. Skipping extraction for {file_name}."
                             logger.error(err_msg)
                             st.session_state.processing_state["errors"][file_id] = err_msg
                     except ValueError as e_parse:
-                        err_msg = f"Invalid template ID format 	{target_template_id}" for extraction: {e_parse}. Skipping {file_name}."
+                        err_msg = f"Invalid template ID format {target_template_id} for extraction: {e_parse}. Skipping {file_name}."
                         logger.error(err_msg)
                         st.session_state.processing_state["errors"][file_id] = err_msg
                 else:
@@ -134,13 +133,13 @@ def process_files_with_progress(files_to_process: List[Dict[str, Any]], extracti
             elif extraction_method == "freeform":
                 freeform_prompt = metadata_config.get("freeform_prompt", "Extract key information.")
                 # extract_freeform_metadata expects client, file_id, prompt, ai_model
-                logger.info(f"File {file_name}: Extracting freeform data with prompt: 	{freeform_prompt}")
+                logger.info(f"File {file_name}: Extracting freeform data with prompt: {freeform_prompt}")
                 extracted_metadata = extract_func(client=client, file_id=file_id, prompt=freeform_prompt, ai_model=ai_model)
 
             if extracted_metadata:
                 st.session_state.extraction_results[file_id] = extracted_metadata
                 st.session_state.processing_state["results"][file_id] = extracted_metadata
-                logger.info(f"Successfully extracted metadata for {file_name} (ID: {file_id}): 	{json.dumps(extracted_metadata, default=str)}")
+                logger.info(f"Successfully extracted metadata for {file_name} (ID: {file_id}): {json.dumps(extracted_metadata, default=str)}")
             elif file_id not in st.session_state.processing_state["errors"]:
                 # If no error was explicitly set but no metadata, log it
                 st.session_state.processing_state["errors"][file_id] = "Extraction returned no data."
@@ -166,7 +165,7 @@ def process_files():
     """
     st.title("Process Files")
     
-    # Initialize session state variables if they don\'t exist
+    # Initialize session state variables if they don't exist
     if "debug_info" not in st.session_state: st.session_state.debug_info = []
     if "metadata_templates" not in st.session_state: st.session_state.metadata_templates = {}
     if "feedback_data" not in st.session_state: st.session_state.feedback_data = {}
@@ -255,7 +254,7 @@ def process_files():
             # Call the actual processing function
             process_files_with_progress(
                 st.session_state.selected_files,
-                get_extraction_functions(), 
+                get_extraction_functions(),
                 batch_size=batch_size,
                 processing_mode=processing_mode
             )
@@ -306,7 +305,7 @@ def process_files():
                                     file_name_err = f_info.get("name", f"File ID {file_id_err}")
                                     break
                             st.error(f"Error extracting from {file_name_err}: {error_msg_err}")
-            
+                
                 # Auto-apply metadata if enabled and there are successful extractions
                 if current_processing_state.get("auto_apply_metadata", False) and st.session_state.extraction_results:
                     st.subheader("Applying Metadata Automatically...")
@@ -347,7 +346,7 @@ def process_files():
                         try:
                             apply_scope, apply_template_key = parse_template_id(template_id_for_application)
                             
-                            logger.info(f"Applying metadata to {file_name_apply} (ID: {file_id_apply}) using template 	{apply_scope}"/	{apply_template_key}" with data: 	{json.dumps(extracted_data, default=str)}")
+                            logger.info(f"Applying metadata to {file_name_apply} (ID: {file_id_apply}) using template {apply_scope}/{apply_template_key} with data: {json.dumps(extracted_data, default=str)}")
                             
                             # Ensure extracted_data is a dict, as expected by worker
                             if not isinstance(extracted_data, dict):
@@ -370,7 +369,7 @@ def process_files():
                                 logger.error(f"Failed to apply metadata to {file_name_apply}: {message_apply}")
 
                         except ValueError as e_parse_apply:
-                            err_msg_apply = f"File {file_name_apply}: Invalid template ID 	{template_id_for_application}" for application: {e_parse_apply}. Skipping."
+                            err_msg_apply = f"File {file_name_apply}: Invalid template ID {template_id_for_application} for application: {e_parse_apply}. Skipping."
                             logger.error(err_msg_apply)
                             st.session_state.processing_state["metadata_applied_status"][file_id_apply] = {"success": False, "message": err_msg_apply}
                             application_error_count += 1
@@ -394,7 +393,7 @@ def process_files():
                                         if str(f_info_err_apply.get("id")) == str(fid):
                                             fname_err_apply = f_info_err_apply.get("name", f"File ID {fid}")
                                             break
-                                    st.error(f"Error applying to {fname_err_apply}: {status["message"]}")                        
+                                    st.error(f"Error applying to {fname_err_apply}: {status['message']}")                        
                     # Mark that auto-apply has run for this batch
                     st.session_state.processing_state["auto_apply_has_run"] = True 
 
@@ -410,5 +409,3 @@ def process_files():
     except Exception as e_main:
         logger.error(f"Critical error in process_files page: {str(e_main)}", exc_info=True)
         st.error(f"An unexpected critical error occurred on the Process Files page: {str(e_main)}")
-
-
